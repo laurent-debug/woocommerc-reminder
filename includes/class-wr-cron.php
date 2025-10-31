@@ -10,6 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class WR_Cron {
 
     const HOOK = 'wr_daily_scan';
+    const LEGACY_HOOK = 'wr_scan_pending_orders';
 
     /**
      * Order statuses eligible for reminders.
