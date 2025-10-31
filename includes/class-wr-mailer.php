@@ -34,22 +34,29 @@ class WR_Mailer {
         $subject = $this->replace_placeholders( $settings['subject'], $placeholders );
         $body    = $this->replace_placeholders( $settings['body'], $placeholders );
 
+        if ( ! function_exists( 'WC' ) ) {
+            return false;
+        }
+
+        $mailer = WC()->mailer();
+
         $content = wc_get_template_html(
             'email-reminder.php',
             array(
                 'email_heading' => $subject,
                 'body'          => $body,
                 'order'         => $order,
+                'sent_to_admin' => false,
+                'plain_text'    => false,
+                'email'         => null,
             ),
             '',
             WR_PLUGIN_PATH . 'templates/'
         );
 
-        if ( ! function_exists( 'WC' ) ) {
-            return false;
+        if ( is_callable( array( $mailer, 'style_inline' ) ) ) {
+            $content = $mailer->style_inline( $content );
         }
-
-        $mailer = WC()->mailer();
 
         $attachments = array();
         if ( $pdf_path && is_readable( $pdf_path ) ) {
