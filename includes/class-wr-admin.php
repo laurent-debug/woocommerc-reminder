@@ -57,7 +57,7 @@ class WR_Admin {
         );
 
         add_settings_field(
-            'attach_invoice',
+            'attach_pdf',
             __( 'Pièce jointe', 'woocommerce-reminder' ),
             array( $this, 'render_attach_field' ),
             'wr_settings_page',
@@ -116,7 +116,15 @@ class WR_Admin {
         $clean_settings['days_after'] = max( 1, absint( $settings['days_after'] ) );
         $clean_settings['subject']    = sanitize_text_field( $settings['subject'] );
         $clean_settings['body']       = wp_kses_post( $settings['body'] );
-        $clean_settings['attach_invoice'] = ! empty( $settings['attach_invoice'] ) ? 1 : 0;
+
+        $attach_flag = null;
+        if ( array_key_exists( 'attach_pdf', $settings ) ) {
+            $attach_flag = $settings['attach_pdf'];
+        } elseif ( array_key_exists( 'attach_invoice', $settings ) ) {
+            $attach_flag = $settings['attach_invoice'];
+        }
+
+        $clean_settings['attach_pdf'] = ! empty( $attach_flag ) ? 1 : 0;
 
         return $clean_settings;
     }
@@ -160,7 +168,7 @@ class WR_Admin {
         $settings = self::get_settings();
         ?>
         <label>
-            <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[attach_invoice]" value="1" <?php checked( $settings['attach_invoice'], 1 ); ?> />
+            <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[attach_pdf]" value="1" <?php checked( $settings['attach_pdf'], 1 ); ?> />
             <?php esc_html_e( 'Joindre la facture PDF', 'woocommerce-reminder' ); ?>
         </label>
         <?php
@@ -174,7 +182,17 @@ class WR_Admin {
     public static function get_settings() {
         $defaults = self::get_default_settings();
 
-        return wp_parse_args( get_option( self::OPTION_KEY, array() ), $defaults );
+        $settings = wp_parse_args( get_option( self::OPTION_KEY, array() ), $defaults );
+
+        if ( isset( $settings['attach_invoice'] ) && ! isset( $settings['attach_pdf'] ) ) {
+            $settings['attach_pdf'] = ! empty( $settings['attach_invoice'] ) ? 1 : 0;
+        }
+
+        $settings['attach_pdf'] = ! empty( $settings['attach_pdf'] ) ? 1 : 0;
+
+        unset( $settings['attach_invoice'] );
+
+        return $settings;
     }
 
     /**
@@ -187,7 +205,7 @@ class WR_Admin {
             'days_after'     => 7,
             'subject'        => __( 'Relance concernant la commande {order_number}', 'woocommerce-reminder' ),
             'body'           => __( 'Bonjour {customer_name},<br><br>Nous vous rappelons que la commande {order_number} présente un solde de {order_total}.<br><br>Merci de finaliser votre paiement dès que possible.', 'woocommerce-reminder' ),
-            'attach_invoice' => 1,
+            'attach_pdf'     => 1,
         );
     }
 }

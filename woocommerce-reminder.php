@@ -25,6 +25,11 @@ if ( ! defined( 'WR_DEBUG' ) ) {
     define( 'WR_DEBUG', defined( 'WP_DEBUG' ) ? WP_DEBUG : false );
 }
 
+$wr_vendor_autoload = WR_PLUGIN_PATH . 'includes/vendor/autoload.php';
+if ( file_exists( $wr_vendor_autoload ) ) {
+    require_once $wr_vendor_autoload;
+}
+
 require_once WR_PLUGIN_PATH . 'includes/class-wr-admin.php';
 require_once WR_PLUGIN_PATH . 'includes/class-wr-bulk.php';
 require_once WR_PLUGIN_PATH . 'includes/class-wr-cron.php';
@@ -83,7 +88,7 @@ class WooCommerce_Reminder {
     protected function __construct() {
         $this->admin = new WR_Admin();
         $this->bulk  = new WR_Bulk();
-        $this->cron  = new WR_Cron( new WR_Mailer(), new WR_PDF() );
+        $this->cron  = new WR_Cron( new WR_Mailer() );
 
         register_activation_hook( WR_PLUGIN_FILE, array( $this, 'activate' ) );
         register_deactivation_hook( WR_PLUGIN_FILE, array( $this, 'deactivate' ) );

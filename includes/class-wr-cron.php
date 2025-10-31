@@ -27,21 +27,12 @@ class WR_Cron {
     protected $mailer;
 
     /**
-     * PDF generator dependency.
-     *
-     * @var WR_PDF
-     */
-    protected $pdf;
-
-    /**
      * Constructor.
      *
      * @param WR_Mailer $mailer Mailer instance.
-     * @param WR_PDF    $pdf    PDF generator instance.
      */
-    public function __construct( WR_Mailer $mailer, WR_PDF $pdf ) {
+    public function __construct( WR_Mailer $mailer ) {
         $this->mailer = $mailer;
-        $this->pdf    = $pdf;
 
         add_action( self::HOOK, array( $this, 'scan' ) );
         add_action( 'wr_send_reminder_for_order', array( $this, 'process_single' ), 10, 1 );
@@ -194,8 +185,8 @@ class WR_Cron {
 
         $pdf_path = null;
 
-        if ( ! empty( $settings['attach_invoice'] ) ) {
-            $pdf_path = $this->pdf->generate_invoice( $order );
+        if ( ! empty( $settings['attach_pdf'] ) ) {
+            $pdf_path = WR_PDF::generate_invoice_pdf( $order_id );
         }
 
         $sent = $this->mailer->send_reminder( $order, $pdf_path );
