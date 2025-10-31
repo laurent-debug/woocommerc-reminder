@@ -189,7 +189,13 @@ class WR_Cron {
 
         $settings = WR_Admin::get_settings();
 
-        $sent = $this->mailer->send_reminder( $order, $settings, $this->pdf );
+        $pdf_path = null;
+
+        if ( ! empty( $settings['attach_invoice'] ) ) {
+            $pdf_path = $this->pdf->generate_invoice( $order );
+        }
+
+        $sent = $this->mailer->send_reminder( $order, $pdf_path );
 
         if ( ! $sent ) {
             return false;
