@@ -67,7 +67,11 @@ class WR_Bulk {
                 continue;
             }
 
-            as_enqueue_async_action( 'wr_send_reminder_for_order', array( $order_id ), 'wr' );
+            if ( function_exists( 'as_enqueue_async_action' ) ) {
+                as_enqueue_async_action( 'wr_send_reminder_for_order', array( 'order_id' => $order_id ), 'wr' );
+            } else {
+                do_action( 'wr_send_reminder_for_order', array( 'order_id' => $order_id ) );
+            }
             $scheduled++;
         }
 
