@@ -31,8 +31,8 @@ class WR_Mailer {
 
         $placeholders = $this->get_placeholders( $order );
 
-        $subject = $this->replace_placeholders( $settings['subject'], $placeholders );
-        $body    = $this->replace_placeholders( $settings['body'], $placeholders );
+        $subject = $this->replace_placeholders( $settings['wr_subject'], $placeholders );
+        $body    = $this->replace_placeholders( $settings['wr_body'], $placeholders );
 
         if ( ! function_exists( 'WC' ) ) {
             return false;
@@ -49,6 +49,8 @@ class WR_Mailer {
                 'sent_to_admin' => false,
                 'plain_text'    => false,
                 'email'         => null,
+                'brand_logo_id' => isset( $settings['wr_brand_logo'] ) ? absint( $settings['wr_brand_logo'] ) : 0,
+                'brand_color'   => isset( $settings['wr_brand_color'] ) ? sanitize_hex_color( $settings['wr_brand_color'] ) : '',
             ),
             '',
             WR_PLUGIN_PATH . 'templates/'

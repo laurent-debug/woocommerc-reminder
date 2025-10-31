@@ -10,6 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class WR_Admin {
 
     const OPTION_KEY = 'wr_settings';
+    const MENU_SLUG  = 'wr-settings';
 
     /**
      * Constructor.
@@ -17,6 +18,7 @@ class WR_Admin {
     public function __construct() {
         add_action( 'admin_init', array( $this, 'register_settings' ) );
         add_action( 'admin_menu', array( $this, 'register_menu' ) );
+        add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
     }
 
     /**
@@ -27,39 +29,55 @@ class WR_Admin {
 
         add_settings_section(
             'wr_general_section',
-            __( 'Paramètres de relance', 'woocommerce-reminder' ),
+            __( 'Invoice reminder settings', 'woocommerce-reminder' ),
             '__return_false',
             'wr_settings_page'
         );
 
         add_settings_field(
-            'days_after',
-            __( 'Envoyer après (jours)', 'woocommerce-reminder' ),
+            'wr_days_after',
+            __( 'Send after (days)', 'woocommerce-reminder' ),
             array( $this, 'render_days_after_field' ),
             'wr_settings_page',
             'wr_general_section'
         );
 
         add_settings_field(
-            'subject',
-            __( 'Sujet de l’e-mail', 'woocommerce-reminder' ),
+            'wr_subject',
+            __( 'Email subject', 'woocommerce-reminder' ),
             array( $this, 'render_subject_field' ),
             'wr_settings_page',
             'wr_general_section'
         );
 
         add_settings_field(
-            'body',
-            __( 'Corps de l’e-mail', 'woocommerce-reminder' ),
+            'wr_body',
+            __( 'Email body', 'woocommerce-reminder' ),
             array( $this, 'render_body_field' ),
             'wr_settings_page',
             'wr_general_section'
         );
 
         add_settings_field(
-            'attach_invoice',
-            __( 'Pièce jointe', 'woocommerce-reminder' ),
+            'wr_attach_pdf',
+            __( 'Attachments', 'woocommerce-reminder' ),
             array( $this, 'render_attach_field' ),
+            'wr_settings_page',
+            'wr_general_section'
+        );
+
+        add_settings_field(
+            'wr_brand_logo',
+            __( 'Brand logo', 'woocommerce-reminder' ),
+            array( $this, 'render_brand_logo_field' ),
+            'wr_settings_page',
+            'wr_general_section'
+        );
+
+        add_settings_field(
+            'wr_brand_color',
+            __( 'Accent color', 'woocommerce-reminder' ),
+            array( $this, 'render_brand_color_field' ),
             'wr_settings_page',
             'wr_general_section'
         );
@@ -74,8 +92,41 @@ class WR_Admin {
             __( 'Invoice Reminders', 'woocommerce-reminder' ),
             __( 'Invoice Reminders', 'woocommerce-reminder' ),
             'manage_woocommerce',
-            'wr-settings',
+            self::MENU_SLUG,
             array( $this, 'render_settings_page' )
+        );
+    }
+
+    /**
+     * Enqueue admin assets.
+     *
+     * @param string $hook Current admin page hook.
+     */
+    public function enqueue_assets( $hook ) {
+        if ( 'woocommerce_page_' . self::MENU_SLUG !== $hook ) {
+            return;
+        }
+
+        wp_enqueue_media();
+        wp_enqueue_style( 'wp-color-picker' );
+        wp_enqueue_script( 'wp-color-picker' );
+
+        wp_enqueue_script(
+            'wr-admin-settings',
+            WR_PLUGIN_URL . 'assets/js/admin-settings.js',
+            array( 'jquery', 'wp-color-picker' ),
+            WR_PLUGIN_VERSION,
+            true
+        );
+
+        wp_localize_script(
+            'wr-admin-settings',
+            'wrAdminSettings',
+            array(
+                'mediaTitle' => __( 'Select a logo', 'woocommerce-reminder' ),
+                'mediaButton'=> __( 'Use this logo', 'woocommerce-reminder' ),
+                'noLogo'     => __( 'No logo selected.', 'woocommerce-reminder' ),
+            )
         );
     }
 
@@ -110,13 +161,22 @@ class WR_Admin {
      */
     public function sanitize_settings( $settings ) {
         $defaults = self::get_default_settings();
-        $settings = wp_parse_args( $settings, $defaults );
+        $settings = wp_parse_args( (array) $settings, $defaults );
 
-        $clean_settings               = array();
-        $clean_settings['days_after'] = max( 1, absint( $settings['days_after'] ) );
-        $clean_settings['subject']    = sanitize_text_field( $settings['subject'] );
-        $clean_settings['body']       = wp_kses_post( $settings['body'] );
-        $clean_settings['attach_invoice'] = ! empty( $settings['attach_invoice'] ) ? 1 : 0;
+        $clean_settings                     = array();
+        $clean_settings['wr_days_after']    = max( 1, absint( $settings['wr_days_after'] ) );
+        $clean_settings['wr_subject']       = sanitize_text_field( $settings['wr_subject'] );
+        $clean_settings['wr_body']          = wp_kses_post( $settings['wr_body'] );
+        $clean_settings['wr_attach_pdf']    = ! empty( $settings['wr_attach_pdf'] ) ? 1 : 0;
+
+        $logo_id = isset( $settings['wr_brand_logo'] ) ? absint( $settings['wr_brand_logo'] ) : 0;
+        if ( $logo_id > 0 && ! get_post( $logo_id ) ) {
+            $logo_id = 0;
+        }
+        $clean_settings['wr_brand_logo'] = $logo_id;
+
+        $color = isset( $settings['wr_brand_color'] ) ? sanitize_hex_color( $settings['wr_brand_color'] ) : '';
+        $clean_settings['wr_brand_color'] = $color ? $color : '';
 
         return $clean_settings;
     }
@@ -127,8 +187,8 @@ class WR_Admin {
     public function render_days_after_field() {
         $settings = self::get_settings();
         ?>
-        <input type="number" min="1" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[days_after]" value="<?php echo esc_attr( $settings['days_after'] ); ?>" />
-        <p class="description"><?php esc_html_e( 'Nombre de jours après la création de la commande avant d’envoyer le rappel.', 'woocommerce-reminder' ); ?></p>
+        <input type="number" min="1" step="1" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[wr_days_after]" value="<?php echo esc_attr( $settings['wr_days_after'] ); ?>" />
+        <p class="description"><?php esc_html_e( 'Number of days to wait after an order is created before sending the reminder.', 'woocommerce-reminder' ); ?></p>
         <?php
     }
 
@@ -138,7 +198,7 @@ class WR_Admin {
     public function render_subject_field() {
         $settings = self::get_settings();
         ?>
-        <input type="text" class="regular-text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[subject]" value="<?php echo esc_attr( $settings['subject'] ); ?>" />
+        <input type="text" class="regular-text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[wr_subject]" value="<?php echo esc_attr( $settings['wr_subject'] ); ?>" />
         <?php
     }
 
@@ -148,21 +208,65 @@ class WR_Admin {
     public function render_body_field() {
         $settings = self::get_settings();
         ?>
-        <textarea name="<?php echo esc_attr( self::OPTION_KEY ); ?>[body]" rows="6" class="large-text"><?php echo esc_textarea( $settings['body'] ); ?></textarea>
-        <p class="description"><?php esc_html_e( 'Placeholders disponibles : {customer_name}, {order_number}, {order_total}.', 'woocommerce-reminder' ); ?></p>
+        <textarea name="<?php echo esc_attr( self::OPTION_KEY ); ?>[wr_body]" rows="8" class="large-text"><?php echo esc_textarea( $settings['wr_body'] ); ?></textarea>
+        <div class="wr-placeholder-cheatsheet">
+            <p><strong><?php esc_html_e( 'Available placeholders:', 'woocommerce-reminder' ); ?></strong></p>
+            <ul>
+                <li><code>{customer_name}</code> – <?php esc_html_e( 'Customer full name', 'woocommerce-reminder' ); ?></li>
+                <li><code>{order_number}</code> – <?php esc_html_e( 'Order number', 'woocommerce-reminder' ); ?></li>
+                <li><code>{order_total}</code> – <?php esc_html_e( 'Order total formatted for the customer', 'woocommerce-reminder' ); ?></li>
+            </ul>
+        </div>
         <?php
     }
 
     /**
-     * Render attach invoice field.
+     * Render attach PDF field.
      */
     public function render_attach_field() {
         $settings = self::get_settings();
         ?>
         <label>
-            <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[attach_invoice]" value="1" <?php checked( $settings['attach_invoice'], 1 ); ?> />
-            <?php esc_html_e( 'Joindre la facture PDF', 'woocommerce-reminder' ); ?>
+            <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[wr_attach_pdf]" value="1" <?php checked( $settings['wr_attach_pdf'], 1 ); ?> />
+            <?php esc_html_e( 'Attach the invoice PDF to reminder emails.', 'woocommerce-reminder' ); ?>
         </label>
+        <?php
+    }
+
+    /**
+     * Render brand logo field.
+     */
+    public function render_brand_logo_field() {
+        $settings      = self::get_settings();
+        $attachment_id = ! empty( $settings['wr_brand_logo'] ) ? absint( $settings['wr_brand_logo'] ) : 0;
+        $preview       = $attachment_id ? wp_get_attachment_image( $attachment_id, 'thumbnail', false, array( 'style' => 'max-width:150px;height:auto;' ) ) : '';
+        ?>
+        <div class="wr-brand-logo-field">
+            <div class="wr-brand-logo-preview" style="margin-bottom: 10px;">
+                <?php
+                if ( $preview ) {
+                    echo wp_kses_post( $preview );
+                } else {
+                    echo '<span class="description">' . esc_html__( 'No logo selected.', 'woocommerce-reminder' ) . '</span>';
+                }
+                ?>
+            </div>
+            <input type="hidden" class="wr-brand-logo-id" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[wr_brand_logo]" value="<?php echo esc_attr( $attachment_id ); ?>" />
+            <button type="button" class="button wr-brand-logo-upload"><?php esc_html_e( 'Choose logo', 'woocommerce-reminder' ); ?></button>
+            <button type="button" class="button wr-brand-logo-remove" <?php disabled( ! $attachment_id ); ?>><?php esc_html_e( 'Remove', 'woocommerce-reminder' ); ?></button>
+        </div>
+        <p class="description"><?php esc_html_e( 'Optional logo displayed in reminder emails.', 'woocommerce-reminder' ); ?></p>
+        <?php
+    }
+
+    /**
+     * Render brand color field.
+     */
+    public function render_brand_color_field() {
+        $settings = self::get_settings();
+        ?>
+        <input type="text" class="wr-color-field" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[wr_brand_color]" value="<?php echo esc_attr( $settings['wr_brand_color'] ); ?>" />
+        <p class="description"><?php esc_html_e( 'Optional accent color applied to reminder templates.', 'woocommerce-reminder' ); ?></p>
         <?php
     }
 
@@ -184,10 +288,12 @@ class WR_Admin {
      */
     public static function get_default_settings() {
         return array(
-            'days_after'     => 7,
-            'subject'        => __( 'Relance concernant la commande {order_number}', 'woocommerce-reminder' ),
-            'body'           => __( 'Bonjour {customer_name},<br><br>Nous vous rappelons que la commande {order_number} présente un solde de {order_total}.<br><br>Merci de finaliser votre paiement dès que possible.', 'woocommerce-reminder' ),
-            'attach_invoice' => 1,
+            'wr_days_after'  => 20,
+            'wr_subject'     => __( 'Payment reminder for order {order_number}', 'woocommerce-reminder' ),
+            'wr_body'        => __( 'Hello {customer_name},<br><br>This is a friendly reminder that order {order_number} still has an outstanding balance of {order_total}.<br><br>Thank you for your business.', 'woocommerce-reminder' ),
+            'wr_attach_pdf'  => 1,
+            'wr_brand_logo'  => 0,
+            'wr_brand_color' => '',
         );
     }
 }

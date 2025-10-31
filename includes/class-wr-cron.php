@@ -98,7 +98,7 @@ class WR_Cron {
         }
 
         $settings   = WR_Admin::get_settings();
-        $days_after = isset( $settings['days_after'] ) ? max( 1, absint( $settings['days_after'] ) ) : 1;
+        $days_after = isset( $settings['wr_days_after'] ) ? max( 1, absint( $settings['wr_days_after'] ) ) : 1;
 
         $statuses = array();
         if ( isset( $settings['statuses'] ) && is_array( $settings['statuses'] ) ) {
@@ -194,7 +194,7 @@ class WR_Cron {
 
         $pdf_path = null;
 
-        if ( ! empty( $settings['attach_invoice'] ) ) {
+        if ( ! empty( $settings['wr_attach_pdf'] ) ) {
             $pdf_path = $this->pdf->generate_invoice( $order );
         }
 
