@@ -4,30 +4,30 @@
  *
  * @var string $subject
  * @var string $body
+ * @var string $email_heading
+ * @var WC_Email|null $email
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-?><!doctype html>
-<html>
-    <head>
-        <meta charset="utf-8" />
-        <style>
-            body { font-family: Arial, sans-serif; color: #222; }
-            .wrapper { max-width: 600px; margin: 0 auto; padding: 20px; }
-            h1 { font-size: 22px; margin-bottom: 20px; }
-            .content { line-height: 1.6; }
-        </style>
-    </head>
-    <body>
-        <div class="wrapper">
-            <?php if ( ! empty( $subject ) ) : ?>
-                <h1><?php echo esc_html( $subject ); ?></h1>
-            <?php endif; ?>
+$heading = isset( $email_heading ) && $email_heading ? $email_heading : ( isset( $subject ) ? $subject : '' );
+$email   = isset( $email ) ? $email : null;
 
-            <div class="content"><?php echo wp_kses_post( $body ); ?></div>
-        </div>
-    </body>
-</html>
+/**
+ * Fires before the WooCommerce email content.
+ *
+ * Mirrors the default WooCommerce template structure so merchants receive
+ * reminders using their store's email branding.
+ */
+do_action( 'woocommerce_email_header', $heading, $email );
+
+if ( ! empty( $body ) ) {
+    echo wpautop( wp_kses_post( $body ) );
+}
+
+/**
+ * Fires after the WooCommerce email content.
+ */
+do_action( 'woocommerce_email_footer', $email );
