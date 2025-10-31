@@ -70,7 +70,13 @@ class WR_Cron {
         $orders = $this->get_eligible_orders( $settings['days_after'] );
 
         foreach ( $orders as $order ) {
-            $sent = $this->mailer->send_reminder( $order, $settings, $this->pdf );
+            $pdf_path = null;
+
+            if ( ! empty( $settings['attach_invoice'] ) ) {
+                $pdf_path = $this->pdf->generate_invoice( $order );
+            }
+
+            $sent = $this->mailer->send_reminder( $order, $pdf_path );
             if ( $sent ) {
                 $order->update_meta_data( '_wr_last_reminder_sent', time() );
                 $count = (int) $order->get_meta( '_wr_reminder_count', true );
