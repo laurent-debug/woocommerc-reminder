@@ -12,6 +12,13 @@ class WR_Cron {
     const HOOK = 'wr_daily_scan';
 
     /**
+     * Order statuses eligible for reminders.
+     *
+     * @var string[]
+     */
+    protected $target_statuses = array( 'pending', 'on-hold' );
+
+    /**
      * Mailer dependency.
      *
      * @var WR_Mailer
