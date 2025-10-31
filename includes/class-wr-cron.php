@@ -66,9 +66,6 @@ class WR_Cron {
         }
 
         $settings = WR_Admin::get_settings();
-        if ( empty( $settings['enabled'] ) ) {
-            return;
-        }
 
         $orders = $this->get_eligible_orders( $settings['days_after'] );
 

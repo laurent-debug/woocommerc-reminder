@@ -30,17 +30,15 @@ class WR_Mailer {
 
         $placeholders = $this->get_placeholders( $order );
 
-        $subject_text = isset( $settings['subject'] ) ? $settings['subject'] : '';
-        $body_text    = isset( $settings['body'] ) ? $settings['body'] : '';
-
-        $subject = $this->replace_placeholders( $subject_text, $placeholders );
-        $body    = $this->replace_placeholders( $body_text, $placeholders );
+        $subject = $this->replace_placeholders( $settings['subject'], $placeholders );
+        $body    = $this->replace_placeholders( $settings['body'], $placeholders );
 
         $content = wc_get_template_html(
             'email-reminder.php',
             array(
-                'subject' => $subject,
-                'body'    => $body,
+                'email_heading' => $subject,
+                'body'          => $body,
+                'order'         => $order,
             ),
             '',
             WR_PLUGIN_PATH . 'templates/'
@@ -71,26 +69,21 @@ class WR_Mailer {
      * @return array
      */
     protected function get_placeholders( WC_Order $order ) {
-        $full_name = '';
-
-        if ( method_exists( $order, 'get_formatted_billing_full_name' ) ) {
-            $full_name = $order->get_formatted_billing_full_name();
+        $customer_name = $order->get_formatted_billing_full_name();
+        if ( empty( $customer_name ) ) {
+            $customer_name = $order->get_billing_first_name();
         }
 
-        if ( empty( $full_name ) ) {
-            $first_name = $order->get_billing_first_name();
-            $last_name  = $order->get_billing_last_name();
-            $full_name  = trim( $first_name . ' ' . $last_name );
-
-            if ( empty( $full_name ) ) {
-                $full_name = $first_name;
-            }
-        }
+        $order_total = $order->get_formatted_order_total();
 
         return array(
-            '{customer_name}' => $full_name,
-            '{order_number}'  => $order->get_order_number(),
-            '{order_total}'   => $order->get_formatted_order_total(),
+            '{customer_name}'       => $customer_name,
+            '{order_number}'        => $order->get_order_number(),
+            '{order_total}'         => $order_total,
+            '{{order_number}}'      => $order->get_order_number(),
+            '{{order_date}}'        => wc_format_datetime( $order->get_date_created(), get_option( 'date_format' ) ),
+            '{{billing_first_name}}'=> $order->get_billing_first_name(),
+            '{{total}}'             => $order_total,
         );
     }
 
