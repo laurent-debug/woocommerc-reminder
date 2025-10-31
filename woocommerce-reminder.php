@@ -21,6 +21,10 @@ define( 'WR_PLUGIN_PATH', plugin_dir_path( WR_PLUGIN_FILE ) );
 define( 'WR_PLUGIN_URL', plugin_dir_url( WR_PLUGIN_FILE ) );
 define( 'WR_PLUGIN_VERSION', '1.0.0' );
 
+if ( ! defined( 'WR_DEBUG' ) ) {
+    define( 'WR_DEBUG', defined( 'WP_DEBUG' ) ? WP_DEBUG : false );
+}
+
 require_once WR_PLUGIN_PATH . 'includes/class-wr-admin.php';
 require_once WR_PLUGIN_PATH . 'includes/class-wr-bulk.php';
 require_once WR_PLUGIN_PATH . 'includes/class-wr-cron.php';
