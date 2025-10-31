@@ -96,6 +96,6 @@ class WR_Mailer {
      * @return string
      */
     protected function replace_placeholders( $text, array $placeholders ) {
-        return strtr( $text, $placeholders );
+        return strtr( (string) $text, $placeholders );
     }
 }
