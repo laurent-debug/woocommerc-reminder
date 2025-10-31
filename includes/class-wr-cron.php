@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class WR_Cron {
 
-    const HOOK = 'wr_send_reminders';
+    const HOOK = 'wr_daily_scan';
 
     /**
      * Mailer dependency.
@@ -35,7 +35,8 @@ class WR_Cron {
         $this->mailer = $mailer;
         $this->pdf    = $pdf;
 
-        add_action( self::HOOK, array( $this, 'process_queue' ) );
+        add_action( self::HOOK, array( $this, 'scan' ) );
+        add_action( 'wr_send_reminder_for_order', array( $this, 'process_single' ), 10, 1 );
     }
 
     /**
@@ -43,7 +44,7 @@ class WR_Cron {
      */
     public function schedule_events() {
         if ( ! wp_next_scheduled( self::HOOK ) ) {
-            wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', self::HOOK );
+            wp_schedule_event( time() + 60, 'daily', self::HOOK );
         }
     }
 
@@ -51,9 +52,23 @@ class WR_Cron {
      * Clear scheduled events.
      */
     public function clear_events() {
+        if ( function_exists( 'wp_unschedule_hook' ) ) {
+            wp_unschedule_hook( self::HOOK );
+            wp_unschedule_hook( self::LEGACY_HOOK );
+
+            return;
+        }
+
         $timestamp = wp_next_scheduled( self::HOOK );
-        if ( $timestamp ) {
+        while ( $timestamp ) {
             wp_unschedule_event( $timestamp, self::HOOK );
+            $timestamp = wp_next_scheduled( self::HOOK );
+        }
+
+        $legacy_timestamp = wp_next_scheduled( self::LEGACY_HOOK );
+        while ( $legacy_timestamp ) {
+            wp_unschedule_event( $legacy_timestamp, self::LEGACY_HOOK );
+            $legacy_timestamp = wp_next_scheduled( self::LEGACY_HOOK );
         }
     }
 
@@ -61,74 +76,125 @@ class WR_Cron {
      * Process reminder queue.
      */
     public function process_queue() {
-        if ( ! class_exists( 'WooCommerce' ) || ! function_exists( 'WC' ) ) {
-            return;
+        return $this->scan();
+    }
+
+    /**
+     * Scan WooCommerce orders and enqueue reminders.
+     *
+     * @return int Number of orders queued or processed.
+     */
+    public function scan() {
+        if ( ! class_exists( 'WooCommerce' ) || ! function_exists( 'wc_get_orders' ) ) {
+            return 0;
+        }
+
+        $settings   = WR_Admin::get_settings();
+        $days_after = isset( $settings['days_after'] ) ? max( 1, absint( $settings['days_after'] ) ) : 1;
+
+        $statuses = array();
+        if ( isset( $settings['statuses'] ) && is_array( $settings['statuses'] ) ) {
+            $statuses = array_filter( array_map( 'sanitize_key', $settings['statuses'] ) );
+        }
+
+        if ( empty( $statuses ) ) {
+            $option_statuses = get_option( 'wr_order_statuses', array() );
+            if ( is_array( $option_statuses ) ) {
+                $statuses = array_filter( array_map( 'sanitize_key', $option_statuses ) );
+            }
+        }
+
+        if ( empty( $statuses ) ) {
+            $statuses = array( 'pending', 'on-hold' );
+        }
+
+        $timezone      = wp_timezone();
+        $now           = new DateTimeImmutable( 'now', $timezone );
+        $threshold     = $now->modify( sprintf( '-%d days', $days_after ) );
+        $day_start     = $now->setTime( 0, 0, 0 );
+        $day_start_ts  = $day_start->getTimestamp();
+        $use_scheduler = function_exists( 'as_enqueue_async_action' );
+
+        $orders = wc_get_orders(
+            array(
+                'status'       => $statuses,
+                'limit'        => -1,
+                'date_created' => '<' . $threshold->format( 'Y-m-d H:i:s' ),
+                'return'       => 'ids',
+            )
+        );
+
+        $count      = 0;
+        $processed  = 0;
+        foreach ( $orders as $order_id ) {
+            $last_sent = (int) get_post_meta( $order_id, '_wr_last_reminder_sent', true );
+
+            if ( $last_sent && $last_sent >= $day_start_ts ) {
+                continue;
+            }
+
+            if ( $use_scheduler ) {
+                as_enqueue_async_action( 'wr_send_reminder_for_order', array( 'order_id' => $order_id ), 'wr' );
+                $count++;
+            } else {
+                $this->process_single( $order_id );
+                $count++;
+                $processed++;
+
+                if ( $processed >= 20 ) {
+                    break;
+                }
+            }
+        }
+
+        error_log( sprintf( 'WR: queued %d orders (threshold=%s)', $count, $threshold->format( 'Y-m-d' ) ) );
+
+        return $count;
+    }
+
+    /**
+     * Send a reminder for a single order.
+     *
+     * @param int|array $order_id Order identifier or argument array.
+     *
+     * @return bool
+     */
+    public function process_single( $order_id ) {
+        if ( is_array( $order_id ) ) {
+            if ( isset( $order_id['order_id'] ) ) {
+                $order_id = $order_id['order_id'];
+            } else {
+                $order_id = reset( $order_id );
+            }
+        }
+
+        $order_id = absint( $order_id );
+
+        if ( ! $order_id ) {
+            return false;
+        }
+
+        $order = wc_get_order( $order_id );
+
+        if ( ! $order ) {
+            return false;
         }
 
         $settings = WR_Admin::get_settings();
 
-        $orders = $this->get_eligible_orders( $settings['days_after'] );
+        $sent = $this->mailer->send_reminder( $order, $settings, $this->pdf );
 
-        foreach ( $orders as $order ) {
-            $pdf_path = null;
-
-            if ( ! empty( $settings['attach_invoice'] ) ) {
-                $pdf_path = $this->pdf->generate_invoice( $order );
-            }
-
-            $sent = $this->mailer->send_reminder( $order, $pdf_path );
-            if ( $sent ) {
-                $order->update_meta_data( '_wr_last_reminder_sent', time() );
-                $count = (int) $order->get_meta( '_wr_reminder_count', true );
-                $order->update_meta_data( '_wr_reminder_count', $count + 1 );
-                $order->save();
-            }
+        if ( ! $sent ) {
+            return false;
         }
-    }
 
-    /**
-     * Get orders that should receive a reminder.
-     *
-     * @param int $days_after Days after order creation.
-     *
-     * @return WC_Order[]
-     */
-    protected function get_eligible_orders( $days_after ) {
-        $threshold = time() - DAY_IN_SECONDS * absint( $days_after );
+        $timestamp = current_time( 'timestamp' );
 
-        $query_args = array(
-            'status'        => array( 'pending', 'on-hold' ),
-            'limit'         => -1,
-            'date_created'  => '<' . $threshold,
-            'meta_query'    => array(
-                'relation' => 'OR',
-                array(
-                    'key'     => '_wr_last_reminder_sent',
-                    'compare' => 'NOT EXISTS',
-                ),
-                array(
-                    'key'     => '_wr_last_reminder_sent',
-                    'value'   => time() - DAY_IN_SECONDS,
-                    'compare' => '<=',
-                    'type'    => 'NUMERIC',
-                ),
-            ),
-            'return'        => 'objects',
-        );
+        $order->update_meta_data( '_wr_last_reminder_sent', $timestamp );
+        $count = (int) $order->get_meta( '_wr_reminder_count', true );
+        $order->update_meta_data( '_wr_reminder_count', $count + 1 );
+        $order->save();
 
-        $orders = wc_get_orders( $query_args );
-
-        return array_filter(
-            $orders,
-            function ( $order ) {
-                $last_sent = (int) $order->get_meta( '_wr_last_reminder_sent', true );
-                if ( ! $last_sent ) {
-                    return true;
-                }
-
-                // Send at most once per day.
-                return ( time() - $last_sent ) >= DAY_IN_SECONDS;
-            }
-        );
+        return true;
     }
 }
