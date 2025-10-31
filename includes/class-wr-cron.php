@@ -9,7 +9,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class WR_Cron {
 
-    const HOOK = 'wr_send_reminders';
+    const HOOK = 'wr_daily_scan';
+    const LEGACY_HOOK = 'wr_send_reminders';
 
     /**
      * Mailer dependency.
@@ -43,7 +44,7 @@ class WR_Cron {
      */
     public function schedule_events() {
         if ( ! wp_next_scheduled( self::HOOK ) ) {
-            wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', self::HOOK );
+            wp_schedule_event( time() + 60, 'daily', self::HOOK );
         }
     }
 
@@ -51,9 +52,23 @@ class WR_Cron {
      * Clear scheduled events.
      */
     public function clear_events() {
+        if ( function_exists( 'wp_unschedule_hook' ) ) {
+            wp_unschedule_hook( self::HOOK );
+            wp_unschedule_hook( self::LEGACY_HOOK );
+
+            return;
+        }
+
         $timestamp = wp_next_scheduled( self::HOOK );
-        if ( $timestamp ) {
+        while ( $timestamp ) {
             wp_unschedule_event( $timestamp, self::HOOK );
+            $timestamp = wp_next_scheduled( self::HOOK );
+        }
+
+        $legacy_timestamp = wp_next_scheduled( self::LEGACY_HOOK );
+        while ( $legacy_timestamp ) {
+            wp_unschedule_event( $legacy_timestamp, self::LEGACY_HOOK );
+            $legacy_timestamp = wp_next_scheduled( self::LEGACY_HOOK );
         }
     }
 
