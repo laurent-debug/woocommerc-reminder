@@ -12,13 +12,12 @@ class WR_Mailer {
     /**
      * Send reminder email for an order.
      *
-     * @param WC_Order $order    WooCommerce order object.
-     * @param array    $settings Plugin settings.
-     * @param WR_PDF   $pdf      PDF generator.
+     * @param WC_Order    $order    WooCommerce order object.
+     * @param string|null $pdf_path Optional path to an attachment.
      *
      * @return bool
      */
-    public function send_reminder( $order, $settings, WR_PDF $pdf ) {
+    public function send_reminder( $order, $pdf_path = null ) {
         if ( ! $order instanceof WC_Order ) {
             return false;
         }
@@ -27,6 +26,8 @@ class WR_Mailer {
         if ( ! $email ) {
             return false;
         }
+
+        $settings = WR_Admin::get_settings();
 
         $placeholders = $this->get_placeholders( $order );
 
@@ -51,11 +52,8 @@ class WR_Mailer {
         $mailer = WC()->mailer();
 
         $attachments = array();
-        if ( ! empty( $settings['attach_invoice'] ) ) {
-            $invoice_path = $pdf->generate_invoice( $order );
-            if ( $invoice_path ) {
-                $attachments[] = $invoice_path;
-            }
+        if ( $pdf_path ) {
+            $attachments[] = $pdf_path;
         }
 
         return $mailer->send( $email, $subject, $content, '', $attachments );

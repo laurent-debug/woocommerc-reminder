@@ -12,6 +12,13 @@ class WR_Cron {
     const HOOK = 'wr_send_reminders';
 
     /**
+     * Order statuses eligible for reminders.
+     *
+     * @var string[]
+     */
+    protected $target_statuses = array( 'pending', 'on-hold' );
+
+    /**
      * Mailer dependency.
      *
      * @var WR_Mailer
@@ -69,15 +76,66 @@ class WR_Cron {
 
         $orders = $this->get_eligible_orders( $settings['days_after'] );
 
+        $sent_count = 0;
+
         foreach ( $orders as $order ) {
-            $sent = $this->mailer->send_reminder( $order, $settings, $this->pdf );
-            if ( $sent ) {
-                $order->update_meta_data( '_wr_last_reminder_sent', time() );
-                $count = (int) $order->get_meta( '_wr_reminder_count', true );
-                $order->update_meta_data( '_wr_reminder_count', $count + 1 );
-                $order->save();
+            if ( $this->process_single( $order->get_id() ) ) {
+                $sent_count++;
             }
         }
+
+        return $sent_count;
+    }
+
+    /**
+     * Process a single order reminder.
+     *
+     * @param int $order_id WooCommerce order ID.
+     *
+     * @return bool True on success, false otherwise.
+     */
+    public function process_single( $order_id ) {
+        if ( empty( $order_id ) || ! function_exists( 'wc_get_order' ) ) {
+            return false;
+        }
+
+        $order = wc_get_order( $order_id );
+        if ( ! $order instanceof WC_Order ) {
+            return false;
+        }
+
+        if ( ! in_array( $order->get_status(), $this->target_statuses, true ) ) {
+            return false;
+        }
+
+        $settings = WR_Admin::get_settings();
+
+        $pdf_path = null;
+        if ( ! empty( $settings['attach_invoice'] ) ) {
+            if ( method_exists( $this->pdf, 'generate_invoice_pdf' ) ) {
+                $pdf_path = $this->pdf->generate_invoice_pdf( $order_id );
+            } else {
+                $pdf_path = $this->pdf->generate_invoice( $order );
+            }
+
+            if ( ! $pdf_path ) {
+                $pdf_path = null;
+            }
+        }
+
+        $sent = $this->mailer->send_reminder( $order, $pdf_path );
+
+        if ( ! $sent ) {
+            return false;
+        }
+
+        $order->update_meta_data( '_wr_last_reminder_sent', current_time( 'mysql', true ) );
+
+        $count = (int) $order->get_meta( '_wr_reminder_count', true );
+        $order->update_meta_data( '_wr_reminder_count', $count + 1 );
+        $order->save();
+
+        return true;
     }
 
     /**
@@ -91,7 +149,7 @@ class WR_Cron {
         $threshold = time() - DAY_IN_SECONDS * absint( $days_after );
 
         $query_args = array(
-            'status'        => array( 'pending', 'on-hold' ),
+            'status'        => $this->target_statuses,
             'limit'         => -1,
             'date_created'  => '<' . $threshold,
             'meta_query'    => array(
@@ -102,9 +160,9 @@ class WR_Cron {
                 ),
                 array(
                     'key'     => '_wr_last_reminder_sent',
-                    'value'   => time() - DAY_IN_SECONDS,
+                    'value'   => gmdate( 'Y-m-d H:i:s', time() - DAY_IN_SECONDS ),
                     'compare' => '<=',
-                    'type'    => 'NUMERIC',
+                    'type'    => 'DATETIME',
                 ),
             ),
             'return'        => 'objects',
@@ -115,13 +173,19 @@ class WR_Cron {
         return array_filter(
             $orders,
             function ( $order ) {
-                $last_sent = (int) $order->get_meta( '_wr_last_reminder_sent', true );
-                if ( ! $last_sent ) {
+                $last_sent = $order->get_meta( '_wr_last_reminder_sent', true );
+                if ( empty( $last_sent ) ) {
+                    return true;
+                }
+
+                $last_sent_timestamp = strtotime( $last_sent . ' GMT' );
+
+                if ( ! $last_sent_timestamp ) {
                     return true;
                 }
 
                 // Send at most once per day.
-                return ( time() - $last_sent ) >= DAY_IN_SECONDS;
+                return ( time() - $last_sent_timestamp ) >= DAY_IN_SECONDS;
             }
         );
     }
