@@ -10,6 +10,23 @@ if ( ! defined( 'ABSPATH' ) ) {
 class WR_PDF {
 
     /**
+     * Generate invoice from an order identifier.
+     *
+     * @param int $order_id Order identifier that can be resolved by wc_get_order.
+     *
+     * @return string|false Absolute path to the generated file or false on failure.
+     */
+    public function generate_invoice_pdf( $order_id ) {
+        $order = wc_get_order( $order_id );
+
+        if ( ! $order instanceof WC_Order ) {
+            return false;
+        }
+
+        return $this->generate_invoice( $order );
+    }
+
+    /**
      * Generate invoice summary as an HTML-based attachment.
      *
      * This is a lightweight implementation that writes an HTML document to a
