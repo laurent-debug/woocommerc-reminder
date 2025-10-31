@@ -45,16 +45,15 @@ class WR_Mailer {
         }
 
         $html = wc_get_template_html(
-            'emails/wr-reminder.php',
+            'email-reminder.php',
             array(
                 'order'         => $order,
                 'email_heading' => $subject,
+                'subject'       => $subject,
                 'plain_text'    => false,
                 'email'         => $email,
                 'body'          => $body,
                 'sent_to_admin' => false,
-                'plain_text'    => false,
-                'email'         => null,
                 'brand_logo_id' => isset( $settings['wr_brand_logo'] ) ? absint( $settings['wr_brand_logo'] ) : 0,
                 'brand_color'   => isset( $settings['wr_brand_color'] ) ? sanitize_hex_color( $settings['wr_brand_color'] ) : '',
             ),
