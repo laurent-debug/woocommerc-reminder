@@ -154,7 +154,9 @@ class WR_Cron {
             }
         }
 
-        error_log( sprintf( 'WR: queued %d orders (threshold=%s)', $count, $threshold->format( 'Y-m-d' ) ) );
+        if ( defined( 'WR_DEBUG' ) && WR_DEBUG ) {
+            error_log( sprintf( 'WR: queued %d orders (threshold=%s)', $count, $threshold->format( 'Y-m-d' ) ) );
+        }
 
         return $count;
     }
