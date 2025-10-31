@@ -22,6 +22,7 @@ define( 'WR_PLUGIN_URL', plugin_dir_url( WR_PLUGIN_FILE ) );
 define( 'WR_PLUGIN_VERSION', '1.0.0' );
 
 require_once WR_PLUGIN_PATH . 'includes/class-wr-admin.php';
+require_once WR_PLUGIN_PATH . 'includes/class-wr-bulk.php';
 require_once WR_PLUGIN_PATH . 'includes/class-wr-cron.php';
 require_once WR_PLUGIN_PATH . 'includes/class-wr-mailer.php';
 require_once WR_PLUGIN_PATH . 'includes/class-wr-pdf.php';
@@ -44,6 +45,13 @@ class WooCommerce_Reminder {
      * @var WR_Admin
      */
     protected $admin;
+
+    /**
+     * Bulk handler.
+     *
+     * @var WR_Bulk
+     */
+    protected $bulk;
 
     /**
      * Cron handler.
@@ -70,6 +78,7 @@ class WooCommerce_Reminder {
      */
     protected function __construct() {
         $this->admin = new WR_Admin();
+        $this->bulk  = new WR_Bulk();
         $this->cron  = new WR_Cron( new WR_Mailer(), new WR_PDF() );
 
         register_activation_hook( WR_PLUGIN_FILE, array( $this, 'activate' ) );

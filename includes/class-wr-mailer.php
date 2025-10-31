@@ -12,8 +12,8 @@ class WR_Mailer {
     /**
      * Send reminder email for an order.
      *
-     * @param WC_Order    $order    WooCommerce order object.
-     * @param string|null $pdf_path Optional path to an attachment.
+     * @param WC_Order   $order     WooCommerce order object.
+     * @param string|null $pdf_path Optional path to an invoice PDF.
      *
      * @return bool
      */
@@ -52,7 +52,7 @@ class WR_Mailer {
         $mailer = WC()->mailer();
 
         $attachments = array();
-        if ( $pdf_path ) {
+        if ( $pdf_path && is_readable( $pdf_path ) ) {
             $attachments[] = $pdf_path;
         }
 
