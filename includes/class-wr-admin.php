@@ -278,7 +278,17 @@ class WR_Admin {
     public static function get_settings() {
         $defaults = self::get_default_settings();
 
-        return wp_parse_args( get_option( self::OPTION_KEY, array() ), $defaults );
+        $settings = wp_parse_args( get_option( self::OPTION_KEY, array() ), $defaults );
+
+        if ( isset( $settings['attach_invoice'] ) && ! isset( $settings['attach_pdf'] ) ) {
+            $settings['attach_pdf'] = ! empty( $settings['attach_invoice'] ) ? 1 : 0;
+        }
+
+        $settings['attach_pdf'] = ! empty( $settings['attach_pdf'] ) ? 1 : 0;
+
+        unset( $settings['attach_invoice'] );
+
+        return $settings;
     }
 
     /**
