@@ -31,13 +31,12 @@ class WR_Mailer {
         $placeholders = $this->get_placeholders( $order );
 
         $subject = $this->replace_placeholders( $settings['subject'], $placeholders );
-        $heading = $this->replace_placeholders( $settings['heading'], $placeholders );
         $body    = $this->replace_placeholders( $settings['body'], $placeholders );
 
         $content = wc_get_template_html(
             'email-reminder.php',
             array(
-                'email_heading' => $heading,
+                'email_heading' => $subject,
                 'body'          => $body,
                 'order'         => $order,
             ),
@@ -70,11 +69,21 @@ class WR_Mailer {
      * @return array
      */
     protected function get_placeholders( WC_Order $order ) {
+        $customer_name = $order->get_formatted_billing_full_name();
+        if ( empty( $customer_name ) ) {
+            $customer_name = $order->get_billing_first_name();
+        }
+
+        $order_total = $order->get_formatted_order_total();
+
         return array(
-            '{{order_number}}'       => $order->get_order_number(),
-            '{{order_date}}'         => wc_format_datetime( $order->get_date_created(), get_option( 'date_format' ) ),
-            '{{billing_first_name}}' => $order->get_billing_first_name(),
-            '{{total}}'              => $order->get_formatted_order_total(),
+            '{customer_name}'       => $customer_name,
+            '{order_number}'        => $order->get_order_number(),
+            '{order_total}'         => $order_total,
+            '{{order_number}}'      => $order->get_order_number(),
+            '{{order_date}}'        => wc_format_datetime( $order->get_date_created(), get_option( 'date_format' ) ),
+            '{{billing_first_name}}'=> $order->get_billing_first_name(),
+            '{{total}}'             => $order_total,
         );
     }
 

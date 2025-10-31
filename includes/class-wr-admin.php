@@ -27,22 +27,14 @@ class WR_Admin {
 
         add_settings_section(
             'wr_general_section',
-            __( 'Reminder Settings', 'woocommerce-reminder' ),
+            __( 'Paramètres de relance', 'woocommerce-reminder' ),
             '__return_false',
             'wr_settings_page'
         );
 
         add_settings_field(
-            'enabled',
-            __( 'Enable reminders', 'woocommerce-reminder' ),
-            array( $this, 'render_enabled_field' ),
-            'wr_settings_page',
-            'wr_general_section'
-        );
-
-        add_settings_field(
             'days_after',
-            __( 'Send after (days)', 'woocommerce-reminder' ),
+            __( 'Envoyer après (jours)', 'woocommerce-reminder' ),
             array( $this, 'render_days_after_field' ),
             'wr_settings_page',
             'wr_general_section'
@@ -50,23 +42,15 @@ class WR_Admin {
 
         add_settings_field(
             'subject',
-            __( 'Email subject', 'woocommerce-reminder' ),
+            __( 'Sujet de l’e-mail', 'woocommerce-reminder' ),
             array( $this, 'render_subject_field' ),
             'wr_settings_page',
             'wr_general_section'
         );
 
         add_settings_field(
-            'heading',
-            __( 'Email heading', 'woocommerce-reminder' ),
-            array( $this, 'render_heading_field' ),
-            'wr_settings_page',
-            'wr_general_section'
-        );
-
-        add_settings_field(
             'body',
-            __( 'Email body', 'woocommerce-reminder' ),
+            __( 'Corps de l’e-mail', 'woocommerce-reminder' ),
             array( $this, 'render_body_field' ),
             'wr_settings_page',
             'wr_general_section'
@@ -74,7 +58,7 @@ class WR_Admin {
 
         add_settings_field(
             'attach_invoice',
-            __( 'Attach invoice summary', 'woocommerce-reminder' ),
+            __( 'Pièce jointe', 'woocommerce-reminder' ),
             array( $this, 'render_attach_field' ),
             'wr_settings_page',
             'wr_general_section'
@@ -128,27 +112,13 @@ class WR_Admin {
         $defaults = self::get_default_settings();
         $settings = wp_parse_args( $settings, $defaults );
 
-        $settings['enabled']        = ! empty( $settings['enabled'] ) ? 1 : 0;
-        $settings['days_after']     = max( 1, absint( $settings['days_after'] ) );
-        $settings['subject']        = sanitize_text_field( $settings['subject'] );
-        $settings['heading']        = sanitize_text_field( $settings['heading'] );
-        $settings['body']           = wp_kses_post( $settings['body'] );
-        $settings['attach_invoice'] = ! empty( $settings['attach_invoice'] ) ? 1 : 0;
+        $clean_settings               = array();
+        $clean_settings['days_after'] = max( 1, absint( $settings['days_after'] ) );
+        $clean_settings['subject']    = sanitize_text_field( $settings['subject'] );
+        $clean_settings['body']       = wp_kses_post( $settings['body'] );
+        $clean_settings['attach_invoice'] = ! empty( $settings['attach_invoice'] ) ? 1 : 0;
 
-        return $settings;
-    }
-
-    /**
-     * Render enable checkbox.
-     */
-    public function render_enabled_field() {
-        $settings = self::get_settings();
-        ?>
-        <label>
-            <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[enabled]" value="1" <?php checked( $settings['enabled'], 1 ); ?> />
-            <?php esc_html_e( 'Send automatic reminders for unpaid orders', 'woocommerce-reminder' ); ?>
-        </label>
-        <?php
+        return $clean_settings;
     }
 
     /**
@@ -158,7 +128,7 @@ class WR_Admin {
         $settings = self::get_settings();
         ?>
         <input type="number" min="1" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[days_after]" value="<?php echo esc_attr( $settings['days_after'] ); ?>" />
-        <p class="description"><?php esc_html_e( 'Number of days after the order creation to send the first reminder.', 'woocommerce-reminder' ); ?></p>
+        <p class="description"><?php esc_html_e( 'Nombre de jours après la création de la commande avant d’envoyer le rappel.', 'woocommerce-reminder' ); ?></p>
         <?php
     }
 
@@ -173,23 +143,13 @@ class WR_Admin {
     }
 
     /**
-     * Render heading field.
-     */
-    public function render_heading_field() {
-        $settings = self::get_settings();
-        ?>
-        <input type="text" class="regular-text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[heading]" value="<?php echo esc_attr( $settings['heading'] ); ?>" />
-        <?php
-    }
-
-    /**
      * Render body field.
      */
     public function render_body_field() {
         $settings = self::get_settings();
         ?>
         <textarea name="<?php echo esc_attr( self::OPTION_KEY ); ?>[body]" rows="6" class="large-text"><?php echo esc_textarea( $settings['body'] ); ?></textarea>
-        <p class="description"><?php esc_html_e( 'Use {{order_number}}, {{order_date}}, {{billing_first_name}}, and {{total}} placeholders.', 'woocommerce-reminder' ); ?></p>
+        <p class="description"><?php esc_html_e( 'Placeholders disponibles : {customer_name}, {order_number}, {order_total}.', 'woocommerce-reminder' ); ?></p>
         <?php
     }
 
@@ -201,7 +161,7 @@ class WR_Admin {
         ?>
         <label>
             <input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[attach_invoice]" value="1" <?php checked( $settings['attach_invoice'], 1 ); ?> />
-            <?php esc_html_e( 'Attach an invoice summary (HTML formatted).', 'woocommerce-reminder' ); ?>
+            <?php esc_html_e( 'Joindre la facture PDF', 'woocommerce-reminder' ); ?>
         </label>
         <?php
     }
@@ -224,11 +184,9 @@ class WR_Admin {
      */
     public static function get_default_settings() {
         return array(
-            'enabled'        => 0,
             'days_after'     => 7,
-            'subject'        => __( 'Friendly reminder for order {{order_number}}', 'woocommerce-reminder' ),
-            'heading'        => __( 'We are still waiting on your payment', 'woocommerce-reminder' ),
-            'body'           => __( 'Hello {{billing_first_name}},<br><br>This is a gentle reminder that order {{order_number}} placed on {{order_date}} is still pending payment. The outstanding total is {{total}}.<br><br>Please complete your payment at your earliest convenience.<br><br>Thank you!', 'woocommerce-reminder' ),
+            'subject'        => __( 'Relance concernant la commande {order_number}', 'woocommerce-reminder' ),
+            'body'           => __( 'Bonjour {customer_name},<br><br>Nous vous rappelons que la commande {order_number} présente un solde de {order_total}.<br><br>Merci de finaliser votre paiement dès que possible.', 'woocommerce-reminder' ),
             'attach_invoice' => 1,
         );
     }
