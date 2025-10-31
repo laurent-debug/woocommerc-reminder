@@ -22,8 +22,8 @@ class WR_Mailer {
             return false;
         }
 
-        $email = $order->get_billing_email();
-        if ( ! $email ) {
+        $recipient = $order->get_billing_email();
+        if ( ! $recipient ) {
             return false;
         }
 
@@ -38,14 +38,20 @@ class WR_Mailer {
             return false;
         }
 
-        $mailer = WC()->mailer();
+        $email = WC()->mailer();
 
-        $content = wc_get_template_html(
-            'email-reminder.php',
+        if ( ! $email ) {
+            return false;
+        }
+
+        $html = wc_get_template_html(
+            'emails/wr-reminder.php',
             array(
-                'email_heading' => $subject,
-                'body'          => $body,
                 'order'         => $order,
+                'email_heading' => $subject,
+                'plain_text'    => false,
+                'email'         => $email,
+                'body'          => $body,
                 'sent_to_admin' => false,
                 'plain_text'    => false,
                 'email'         => null,
@@ -56,8 +62,8 @@ class WR_Mailer {
             WR_PLUGIN_PATH . 'templates/'
         );
 
-        if ( is_callable( array( $mailer, 'style_inline' ) ) ) {
-            $content = $mailer->style_inline( $content );
+        if ( is_callable( array( $email, 'style_inline' ) ) ) {
+            $html = $email->style_inline( $html );
         }
 
         $attachments = array();
@@ -65,7 +71,13 @@ class WR_Mailer {
             $attachments[] = $pdf_path;
         }
 
-        return $mailer->send( $email, $subject, $content, '', $attachments );
+        $headers = is_callable( array( $email, 'get_headers' ) ) ? $email->get_headers() : '';
+
+        if ( empty( $headers ) ) {
+            $headers = 'Content-Type: text/html; charset=UTF-8';
+        }
+
+        return $email->send( $recipient, $subject, $html, $headers, $attachments );
     }
 
     /**
