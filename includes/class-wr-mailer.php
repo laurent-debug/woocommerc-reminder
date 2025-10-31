@@ -41,7 +41,7 @@ class WR_Mailer {
         $mailer = WC()->mailer();
 
         $content = wc_get_template_html(
-            'email-reminder.php',
+            'emails/wr-reminder.php',
             array(
                 'email_heading' => $subject,
                 'body'          => $body,
