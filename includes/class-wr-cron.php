@@ -89,7 +89,7 @@ class WR_Cron {
         }
 
         $settings   = WR_Admin::get_settings();
-        $days_after = isset( $settings['wr_days_after'] ) ? max( 1, absint( $settings['wr_days_after'] ) ) : 1;
+        $days_after = isset( $settings['wr_days_after'] ) ? max( 1, absint( $settings['wr_days_after'] ) ) : 30;
 
         $statuses = array();
         if ( isset( $settings['statuses'] ) && is_array( $settings['statuses'] ) ) {
