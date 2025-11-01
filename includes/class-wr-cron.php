@@ -186,7 +186,7 @@ class WR_Cron {
         $pdf_path = null;
 
         if ( ! empty( $settings['wr_attach_pdf'] ) ) {
-            $pdf_path = WR_PDF::generate_invoice_pdf( $order->get_id() );
+            $pdf_path = ( new WR_PDF() )->generate_invoice_pdf( $order_id );
         }
 
         $sent = $this->mailer->send_reminder( $order, $pdf_path );
