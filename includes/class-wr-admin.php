@@ -280,6 +280,12 @@ class WR_Admin {
 
         $settings = wp_parse_args( get_option( self::OPTION_KEY, array() ), $defaults );
 
+        $settings['wr_days_after'] = absint( $settings['wr_days_after'] );
+
+        if ( $settings['wr_days_after'] < 1 ) {
+            $settings['wr_days_after'] = 30;
+        }
+
         if ( isset( $settings['attach_invoice'] ) && ! isset( $settings['attach_pdf'] ) ) {
             $settings['attach_pdf'] = ! empty( $settings['attach_invoice'] ) ? 1 : 0;
         }
