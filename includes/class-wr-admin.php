@@ -25,7 +25,19 @@ class WR_Admin {
      * Register settings fields.
      */
     public function register_settings() {
-        register_setting( 'wr_settings_group', self::OPTION_KEY, array( $this, 'sanitize_settings' ) );
+        register_setting(
+            'wr_settings_group',
+            self::OPTION_KEY,
+            array(
+                'sanitize_callback' => array( $this, 'sanitize_settings' ),
+                'default'           => array_merge(
+                    self::get_default_settings(),
+                    array(
+                        'wr_days_after' => 30,
+                    )
+                ),
+            )
+        );
 
         add_settings_section(
             'wr_general_section',
