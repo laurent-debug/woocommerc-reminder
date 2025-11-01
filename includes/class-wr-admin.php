@@ -298,7 +298,7 @@ class WR_Admin {
      */
     public static function get_default_settings() {
         return array(
-            'wr_days_after'  => 20,
+            'wr_days_after'  => 30,
             'wr_subject'     => __( 'Payment reminder for order {order_number}', 'woocommerce-reminder' ),
             'wr_body'        => __( 'Hello {customer_name},<br><br>This is a friendly reminder that order {order_number} still has an outstanding balance of {order_total}.<br><br>Thank you for your business.', 'woocommerce-reminder' ),
             'wr_attach_pdf'  => 1,
