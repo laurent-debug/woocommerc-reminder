@@ -17,7 +17,7 @@ class WR_Cron {
      *
      * @var string[]
      */
-    protected $target_statuses = array( 'pending', 'on-hold' );
+    protected $target_statuses = array( 'pending', 'on-hold', 'transmettre-a-planzer' );
 
     /**
      * Mailer dependency.
@@ -104,7 +104,7 @@ class WR_Cron {
         }
 
         if ( empty( $statuses ) ) {
-            $statuses = array( 'pending', 'on-hold' );
+            $statuses = array( 'pending', 'on-hold', 'transmettre-a-planzer' );
         }
 
         $timezone      = wp_timezone();
