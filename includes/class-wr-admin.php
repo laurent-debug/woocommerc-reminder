@@ -188,7 +188,7 @@ class WR_Admin {
         $settings = self::get_settings();
         ?>
         <input type="number" min="1" step="1" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[wr_days_after]" value="<?php echo esc_attr( $settings['wr_days_after'] ); ?>" />
-        <p class="description"><?php esc_html_e( 'Number of days to wait after an order is created before sending the reminder.', 'woocommerce-reminder' ); ?></p>
+        <p class="description"><?php esc_html_e( 'Number of days to wait after an order is created before sending the reminder. Par défaut : 30 jours.', 'woocommerce-reminder' ); ?></p>
         <?php
     }
 
