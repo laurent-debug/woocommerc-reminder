@@ -17,4 +17,9 @@ This plugin adds automated reminder emails for WooCommerce orders that are still
 
 ## Development
 
-The plugin is intentionally lightweight and does not include a PDF library. If you need true PDF attachments, replace the implementation in `includes/class-wr-pdf.php` with a generator such as Dompdf or TCPDF.
+The plugin expects JimSoft (or another external system) to provide PDF invoices. You can fine-tune the discovery logic with the following filters:
+
+* `wr_jimsoft_invoice_dir` – Change the directory that is scanned for JimSoft PDFs.
+* `wr_jimsoft_invoice_candidates` – Amend the ordered list of candidate filenames before the glob fallback runs.
+
+These filters keep backwards compatibility with earlier customisations that overrode the previous generator logic.
