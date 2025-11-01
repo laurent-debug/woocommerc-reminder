@@ -407,7 +407,7 @@ class WR_Admin {
         return array(
             'wr_days_after'  => 30,
             'wr_subject'     => __( 'Payment reminder for order {order_number}', 'woocommerce-reminder' ),
-            'wr_body'        => __( 'Hello {customer_name},<br><br>This is a friendly reminder that order {order_number} still has an outstanding balance of {order_total}.<br><br>Thank you for your business.', 'woocommerce-reminder' ),
+            'wr_body'        => __( 'Bonjour {customer_name},<br><br>Nous souhaitions vous rappeler que la commande {order_number} présente toujours un solde dû de {order_total}.<br><br>Merci pour votre confiance.', 'woocommerce-reminder' ),
             'wr_attach_pdf'  => 1,
             'wr_brand_logo'  => 0,
             'wr_brand_color' => '',
