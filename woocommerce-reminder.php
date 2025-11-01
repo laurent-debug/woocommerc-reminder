@@ -36,10 +36,18 @@ require_once WR_PLUGIN_PATH . 'includes/class-wr-cron.php';
 require_once WR_PLUGIN_PATH . 'includes/class-wr-mailer.php';
 require_once WR_PLUGIN_PATH . 'includes/class-wr-pdf.php';
 
-if ( is_admin() && current_user_can( 'edit_shop_orders' ) ) {
+/**
+ * Lazily load the orders list handler once WordPress is ready.
+ */
+function wr_maybe_bootstrap_orders_list() {
+    if ( ! is_admin() || ! current_user_can( 'edit_shop_orders' ) ) {
+        return;
+    }
+
     require_once WR_PLUGIN_PATH . 'includes/class-wr-orders-list.php';
     new WR_Orders_List();
 }
+add_action( 'init', 'wr_maybe_bootstrap_orders_list' );
 
 /**
  * Main plugin bootstrap.
