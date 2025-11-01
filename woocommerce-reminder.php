@@ -36,6 +36,11 @@ require_once WR_PLUGIN_PATH . 'includes/class-wr-cron.php';
 require_once WR_PLUGIN_PATH . 'includes/class-wr-mailer.php';
 require_once WR_PLUGIN_PATH . 'includes/class-wr-pdf.php';
 
+if ( is_admin() && current_user_can( 'edit_shop_orders' ) ) {
+    require_once WR_PLUGIN_PATH . 'includes/class-wr-orders-list.php';
+    new WR_Orders_List();
+}
+
 /**
  * Main plugin bootstrap.
  */
