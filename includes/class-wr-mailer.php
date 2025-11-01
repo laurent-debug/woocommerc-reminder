@@ -31,6 +31,14 @@ class WR_Mailer {
 
         $placeholders = $this->get_placeholders( $order );
 
+        $first   = trim( $order->get_billing_first_name() );
+        $company = trim( $order->get_billing_company() );
+
+        $customer_name = '' !== $first ? $first : ( '' !== $company ? $company : __( 'client', 'woocommerce-reminder' ) );
+
+        $placeholders['customer_name']   = $customer_name;
+        $placeholders['{customer_name}'] = $customer_name;
+
         $subject = $this->replace_placeholders( $settings['wr_subject'], $placeholders );
         $body    = $this->replace_placeholders( $settings['wr_body'], $placeholders );
 
