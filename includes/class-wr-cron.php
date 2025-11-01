@@ -53,7 +53,6 @@ class WR_Cron {
     public function clear_events() {
         if ( function_exists( 'wp_unschedule_hook' ) ) {
             wp_unschedule_hook( self::HOOK );
-            wp_unschedule_hook( self::LEGACY_HOOK );
 
             return;
         }
@@ -62,12 +61,6 @@ class WR_Cron {
         while ( $timestamp ) {
             wp_unschedule_event( $timestamp, self::HOOK );
             $timestamp = wp_next_scheduled( self::HOOK );
-        }
-
-        $legacy_timestamp = wp_next_scheduled( self::LEGACY_HOOK );
-        while ( $legacy_timestamp ) {
-            wp_unschedule_event( $legacy_timestamp, self::LEGACY_HOOK );
-            $legacy_timestamp = wp_next_scheduled( self::LEGACY_HOOK );
         }
     }
 
