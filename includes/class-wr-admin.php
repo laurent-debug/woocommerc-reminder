@@ -43,6 +43,14 @@ class WR_Admin {
         );
 
         add_settings_field(
+            'wr_statuses',
+            __( 'Order statuses', 'woocommerce-reminder' ),
+            array( $this, 'render_statuses_field' ),
+            'wr_settings_page',
+            'wr_general_section'
+        );
+
+        add_settings_field(
             'wr_subject',
             __( 'Email subject', 'woocommerce-reminder' ),
             array( $this, 'render_subject_field' ),
@@ -169,6 +177,45 @@ class WR_Admin {
         $clean_settings['wr_body']          = wp_kses_post( $settings['wr_body'] );
         $clean_settings['wr_attach_pdf']    = ! empty( $settings['wr_attach_pdf'] ) ? 1 : 0;
 
+        $submitted_statuses = array();
+        if ( isset( $settings['wr_statuses'] ) ) {
+            $submitted_statuses = (array) $settings['wr_statuses'];
+        } elseif ( isset( $settings['statuses'] ) ) {
+            $submitted_statuses = (array) $settings['statuses'];
+        }
+
+        $order_statuses = function_exists( 'wc_get_order_statuses' ) ? wc_get_order_statuses() : array();
+        $order_statuses['wc-transmettre-a-planzer'] = __( 'Transmettre à Planzer', 'woocommerce-reminder' );
+
+        $allowed_statuses = array();
+        foreach ( array_keys( $order_statuses ) as $status_key ) {
+            if ( 0 === strpos( $status_key, 'wc-' ) ) {
+                $status_key = substr( $status_key, 3 );
+            }
+
+            $allowed_statuses[] = sanitize_key( $status_key );
+        }
+        $allowed_statuses = array_unique( $allowed_statuses );
+
+        $normalized_statuses = array();
+        foreach ( $submitted_statuses as $status_key ) {
+            $status_key = sanitize_key( $status_key );
+
+            if ( 0 === strpos( $status_key, 'wc-' ) ) {
+                $status_key = substr( $status_key, 3 );
+            }
+
+            if ( empty( $status_key ) || ! in_array( $status_key, $allowed_statuses, true ) ) {
+                continue;
+            }
+
+            $normalized_statuses[] = $status_key;
+        }
+
+        $normalized_statuses               = array_values( array_unique( $normalized_statuses ) );
+        $clean_settings['wr_statuses']     = $normalized_statuses;
+        $clean_settings['statuses']        = $normalized_statuses;
+
         $logo_id = isset( $settings['wr_brand_logo'] ) ? absint( $settings['wr_brand_logo'] ) : 0;
         if ( $logo_id > 0 && ! get_post( $logo_id ) ) {
             $logo_id = 0;
@@ -179,6 +226,36 @@ class WR_Admin {
         $clean_settings['wr_brand_color'] = $color ? $color : '';
 
         return $clean_settings;
+    }
+
+    /**
+     * Render order statuses field.
+     */
+    public function render_statuses_field() {
+        $settings           = self::get_settings();
+        $selected_statuses  = isset( $settings['wr_statuses'] ) && is_array( $settings['wr_statuses'] ) ? $settings['wr_statuses'] : array();
+        $selected_statuses  = array_map( 'sanitize_key', $selected_statuses );
+        $selected_prefixed  = array();
+        foreach ( $selected_statuses as $status ) {
+            if ( 0 === strpos( $status, 'wc-' ) ) {
+                $selected_prefixed[] = $status;
+            } else {
+                $selected_prefixed[] = 'wc-' . $status;
+            }
+        }
+        $selected_prefixed = array_values( array_unique( $selected_prefixed ) );
+
+        $order_statuses = function_exists( 'wc_get_order_statuses' ) ? wc_get_order_statuses() : array();
+        $order_statuses['wc-transmettre-a-planzer'] = __( 'Transmettre à Planzer', 'woocommerce-reminder' );
+
+        ?>
+        <select name="<?php echo esc_attr( self::OPTION_KEY ); ?>[wr_statuses][]" multiple="multiple" size="6" style="min-width: 220px;">
+            <?php foreach ( $order_statuses as $status_key => $status_label ) : ?>
+                <option value="<?php echo esc_attr( $status_key ); ?>" <?php selected( in_array( $status_key, $selected_prefixed, true ) ); ?>><?php echo esc_html( $status_label ); ?></option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description"><?php esc_html_e( 'Select the order statuses that should receive reminder emails.', 'woocommerce-reminder' ); ?></p>
+        <?php
     }
 
     /**
@@ -286,6 +363,18 @@ class WR_Admin {
 
         $settings['attach_pdf'] = ! empty( $settings['attach_pdf'] ) ? 1 : 0;
 
+        $statuses = array();
+        if ( isset( $settings['wr_statuses'] ) && is_array( $settings['wr_statuses'] ) ) {
+            $statuses = $settings['wr_statuses'];
+        } elseif ( isset( $settings['statuses'] ) && is_array( $settings['statuses'] ) ) {
+            $statuses = $settings['statuses'];
+        }
+
+        $statuses = array_values( array_unique( array_filter( array_map( 'sanitize_key', $statuses ) ) ) );
+
+        $settings['wr_statuses'] = $statuses;
+        $settings['statuses']     = $statuses;
+
         unset( $settings['attach_invoice'] );
 
         return $settings;
@@ -304,6 +393,8 @@ class WR_Admin {
             'wr_attach_pdf'  => 1,
             'wr_brand_logo'  => 0,
             'wr_brand_color' => '',
+            'wr_statuses'    => array( 'pending', 'on-hold' ),
+            'statuses'       => array( 'pending', 'on-hold' ),
         );
     }
 }
