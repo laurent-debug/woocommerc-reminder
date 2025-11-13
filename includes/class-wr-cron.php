@@ -126,6 +126,12 @@ class WR_Cron {
         $count      = 0;
         $processed  = 0;
         foreach ( $orders as $order_id ) {
+            $reminder_count = (int) get_post_meta( $order_id, '_wr_reminder_count', true );
+
+            if ( $reminder_count > 0 ) {
+                continue;
+            }
+
             $last_sent = (int) get_post_meta( $order_id, '_wr_last_reminder_sent', true );
 
             if ( $last_sent && $last_sent >= $day_start_ts ) {
